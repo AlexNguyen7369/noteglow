@@ -8,11 +8,5 @@
     "src/app/api/**": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "HF_TOKEN": {
-      "required": true,
-      "description": "HuggingFace API token for AI features"
-    }
   }
 }
