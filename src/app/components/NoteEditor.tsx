@@ -32,10 +32,14 @@ const NoteEditor = () => {
     useState<TransformResult | null>(null);
   const [transformError, setTransformError] = useState<string | null>(null);
 
+  // Term definition hashmap: term → definition
+  const [termDefinitions, setTermDefinitions] = useState<
+    Record<string, string>
+  >({});
+
   // Term definition popup state
   const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
-  const [termDefinition, setTermDefinition] = useState<string | null>(null);
-  const [isLoadingDefinition, setIsLoadingDefinition] = useState(false);
+  const [isLoadingDefinitions, setIsLoadingDefinitions] = useState(false);
 
   // Load notes from localStorage on mount
   useEffect(() => {
@@ -127,6 +131,11 @@ const NoteEditor = () => {
 
       const result: TransformResult = await response.json();
       setTransformResult(result);
+
+      // Load all term definitions if highlights exist
+      if (transformOptions.highlightKeyTerms && result.highlights.length > 0) {
+        await loadTermDefinitions(result.highlights);
+      }
     } catch (error) {
       setTransformError(
         error instanceof Error
@@ -138,40 +147,53 @@ const NoteEditor = () => {
     }
   };
 
-  // Handle fetching term definition
-  const handleTermClick = async (term: string) => {
-    setSelectedTerm(term);
-    setIsLoadingDefinition(true);
-    setTermDefinition(null);
+  // Load all term definitions in parallel
+  const loadTermDefinitions = async (terms: string[]) => {
+    setIsLoadingDefinitions(true);
 
     try {
-      const response = await fetch("/api/term-definition", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          term,
-          context: notes, // Pass the notes as context for better definitions
-        }),
+      // Fetch all definitions in parallel
+      const definitionPromises = terms.map((term) =>
+        fetch("/api/term-definition", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            term,
+            context: notes, // Pass the notes as context for better definitions
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => ({
+            term,
+            definition: data.definition || "No definition available",
+          }))
+          .catch(() => ({
+            term,
+            definition: "Failed to load definition",
+          }))
+      );
+
+      const definitions = await Promise.all(definitionPromises);
+
+      // Create hashmap: term → definition
+      const definitionsMap: Record<string, string> = {};
+      definitions.forEach(({ term, definition }) => {
+        definitionsMap[term] = definition;
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch term definition");
-      }
-
-      const result = await response.json();
-      setTermDefinition(result.definition);
+      setTermDefinitions(definitionsMap);
     } catch (error) {
-      setTermDefinition(
-        error instanceof Error
-          ? `Error: ${error.message}`
-          : "Error fetching definition"
-      );
+      console.error("Error loading definitions:", error);
     } finally {
-      setIsLoadingDefinition(false);
+      setIsLoadingDefinitions(false);
     }
+  };
+
+  // Handle term click - just show definition from hashmap
+  const handleTermClick = (term: string) => {
+    setSelectedTerm(term);
   };
 
   return (
@@ -488,43 +510,39 @@ const NoteEditor = () => {
         />
       )}
 
-      {/* Term Definition Popup Modal */}
+      {/* Term Definition Minimal Popup */}
       {selectedTerm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 animate-in fade-in duration-200">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-bold text-gray-800 break-words flex-1">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedTerm(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-sm w-full p-4 animate-in fade-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Term Title */}
+            <div className="flex justify-between items-center mb-3">
+              <h4 className="text-lg font-bold text-gray-800 break-words flex-1">
                 {selectedTerm}
-              </h3>
+              </h4>
               <button
                 onClick={() => setSelectedTerm(null)}
-                className="text-gray-500 hover:text-gray-700 ml-2"
+                className="text-gray-400 hover:text-gray-600 ml-2 flex-shrink-0"
               >
-                <FiX size={24} />
+                <FiX size={20} />
               </button>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-lg">
-              {isLoadingDefinition ? (
-                <div className="flex items-center gap-2 text-gray-600">
-                  <FiLoader size={16} className="animate-spin" />
-                  <span className="text-sm">Loading definition...</span>
-                </div>
-              ) : termDefinition ? (
-                <p className="text-gray-700 text-sm leading-relaxed">
-                  {termDefinition}
-                </p>
+            {/* Definition */}
+            <p className="text-gray-700 text-sm leading-relaxed">
+              {isLoadingDefinitions ? (
+                <span className="text-gray-500">Loading...</span>
+              ) : termDefinitions[selectedTerm] ? (
+                termDefinitions[selectedTerm]
               ) : (
-                <p className="text-gray-500 text-sm">No definition available</p>
+                <span className="text-gray-500">No definition available</span>
               )}
-            </div>
-
-            <button
-              onClick={() => setSelectedTerm(null)}
-              className="w-full mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200"
-            >
-              Close
-            </button>
+            </p>
           </div>
         </div>
       )}
