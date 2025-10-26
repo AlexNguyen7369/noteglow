@@ -1,5 +1,18 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Project Structure Workplan
+
+| Feature | Priority | Complexity |
+|---------|----------|-----------|
+| Blank Canvas Editor | High | Low |
+| Transform Button | High | Low |
+| AI Formatting | High | Medium |
+| Keyword Highlighting | High | Medium |
+| AI Comments Panel | High | Medium |
+| Note History/Versioning | Medium | Medium |
+| Export to PDF | Medium | Low |
+| Dark Mode | Low | Low |
+
 ## Getting Started
 
 First, run the development server:
