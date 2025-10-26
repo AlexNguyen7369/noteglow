@@ -7,7 +7,6 @@ const TransformOptionsSchema = z.object({
   autoFormat: z.boolean(),
   highlightKeyTerms: z.boolean(),
   comments: z.boolean(),
-  studyGuidePdf: z.boolean(),
 });
 
 const TransformRequestSchema = z.object({
@@ -23,7 +22,6 @@ export type TransformResult = {
   formattedNotes: string;
   highlights: string[];
   comments: string[];
-  pdfContent?: string;
 };
 
 export async function POST(request: NextRequest) {
@@ -91,18 +89,6 @@ STRICT RULES:
       instructions.push(`- Do NOT generate any comments or insights`);
     }
 
-    if (options.studyGuidePdf) {
-      instructions.push(`
-- StudyGuide PDF Creation: Structure notes as a comprehensive study guide
-  - Include summary section
-  - Add review questions (but do not answer them)
-  - Organize topics hierarchically
-  - Include a "Study Tips" section
-  - Format: "pdfContent": "markdown formatted study guide structure"`);
-    } else {
-      instructions.push(`- Do NOT create any PDF-ready structure or study guide format`);
-    }
-
     systemPrompt += `
 
 TRANSFORMATION CRITERIA:
@@ -112,8 +98,7 @@ OUTPUT FORMAT (valid JSON):
 {
   "formattedNotes": "the transformed notes (with formatting if requested, plain if not)",
   "highlights": ${options.highlightKeyTerms ? '["key", "terms", "here"]' : '[]'},
-  "comments": ${options.comments ? '["comment1", "comment2"]' : '[]'},
-  "pdfContent": ${options.studyGuidePdf ? '"study guide markdown structure"' : 'null'}
+  "comments": ${options.comments ? '["comment1", "comment2"]' : '[]'}
 }`;
 
     // Call HuggingFace Inference API
@@ -200,7 +185,6 @@ OUTPUT FORMAT (valid JSON):
         comments: Array.isArray(parsedResponse.comments)
           ? parsedResponse.comments
           : [],
-        pdfContent: parsedResponse.pdfContent || undefined,
       };
     } catch (parseError) {
       // If JSON parsing fails, log the actual response for debugging
