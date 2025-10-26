@@ -206,7 +206,7 @@ const NoteEditor = () => {
               📝 NoteGlow
             </h1>
             <p className="text-gray-600">
-              Write your notes freely. We'll organize them for you.
+              Write your notes freely. We&apos;ll organize them for you.
             </p>
           </div>
           {/* Sidebar toggle button */}
