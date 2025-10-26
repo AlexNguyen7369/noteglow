@@ -102,10 +102,12 @@ OUTPUT FORMAT (valid JSON):
 }`;
 
     // Call HuggingFace Inference API
+    // Note: Using meta-llama/Llama-2-70b-chat-hf as it's more reliable
+    // You can change to 'deepseek-ai/DeepSeek-V3-0324' if you prefer
     let response;
     try {
       response = await client.chatCompletion({
-        model: 'deepseek-ai/DeepSeek-V3-0324',
+        model: 'meta-llama/Llama-2-70b-chat-hf',
         messages: [
           {
             role: 'system',
@@ -159,6 +161,22 @@ OUTPUT FORMAT (valid JSON):
       );
     }
 
+    // Check if response contains an error message (e.g., "Internal Server Error")
+    if (
+      responseContent.toLowerCase().includes('error') ||
+      responseContent.toLowerCase().includes('internal') ||
+      responseContent.toLowerCase().includes('overloaded')
+    ) {
+      console.error('HuggingFace Error Response:', responseContent);
+      return NextResponse.json(
+        {
+          error: 'HuggingFace API returned an error. This may be due to: 1) API overload, 2) Invalid token, or 3) Model unavailable. Please try again in a few moments.',
+          details: responseContent.substring(0, 200),
+        },
+        { status: 503 }
+      );
+    }
+
     // Parse the JSON response - handle markdown code blocks and extra text
     let transformResult: TransformResult;
     try {
@@ -192,8 +210,8 @@ OUTPUT FORMAT (valid JSON):
       console.error('Raw response:', responseContent);
       return NextResponse.json(
         {
-          error: 'Failed to parse transformation response from AI model',
-          details: responseContent.substring(0, 500), // Return first 500 chars for debugging
+          error: 'Failed to parse transformation response. The model may have returned invalid JSON. Please try again.',
+          details: responseContent.substring(0, 200),
         },
         { status: 500 }
       );

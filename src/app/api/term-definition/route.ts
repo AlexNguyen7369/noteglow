@@ -55,7 +55,7 @@ Return ONLY the definition, nothing else.`;
     let response;
     try {
       response = await client.chatCompletion({
-        model: 'deepseek-ai/DeepSeek-V3-0324',
+        model: 'meta-llama/Llama-2-70b-chat-hf',
         messages: [
           {
             role: 'system',
